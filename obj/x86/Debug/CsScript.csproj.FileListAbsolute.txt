@@ -1,0 +1,12 @@
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\obj\x86\Debug\ResolveAssemblyReference.cache
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\obj\x86\Debug\CsScript.Properties.Resources.resources
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\obj\x86\Debug\GenerateResource.read.1.tlog
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\obj\x86\Debug\GenerateResource.write.1.tlog
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\bin\Debug\CsScript.exe.config
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\bin\Debug\CsScript.exe
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\bin\Debug\CsScript.pdb
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\obj\x86\Debug\CsScript.exe
+D:\Documents\学校\作业\毕业设计\Tools\CsScript\obj\x86\Debug\CsScript.pdb
+D:\Documents\学校\作业\毕业设计\Tools\bin\CsScript.exe.config
+D:\Documents\学校\作业\毕业设计\Tools\bin\CsScript.exe
+D:\Documents\学校\作业\毕业设计\Tools\bin\CsScript.pdb
