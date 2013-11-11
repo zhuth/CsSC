@@ -92,7 +92,8 @@ namespace CsSC
                 }
             }
 
-            CompilerResults compilerResults = CompileUnit.Compile(filename, fullsource, showsource);
+            string fileid;
+            CompilerResults compilerResults = CompileUnit.Compile(filename, fullsource, showsource, out fileid);
 
             ++args_offset;
             string[] child_argv = new string[Math.Max(0, argv.Length - args_offset)];
@@ -103,7 +104,7 @@ namespace CsSC
             {
                 ///如果错误数为0则进行调用
                 Assembly asm = compilerResults.CompiledAssembly;
-                Type type = asm.GetTypes()[0];
+                Type type = asm.GetType("ScriptRunner.Program" + fileid);
                 MethodInfo methodInfo = type.GetMethod("Main");
                 //object obj = System.Activator.CreateInstance(type);
                 try

@@ -14,7 +14,7 @@ namespace CsSC
         public const string template = "// !CsScript Generated, do not remove\r\n";
         public const string default_using = "using System;\r\nusing System.IO;\r\nusing System.Text;\r\nusing System.Text.RegularExpressions;\r\nusing System.Collections.Generic;\r\n";
         public const string default_main = "namespace ScriptRunner {\r\npublic static partial class Program##id## {\r\npublic static void Main(string[] args) {\r\n #### \r\n}\r\n}\r\n}\r\n";
-        public const string default_functions = "namespace ScriptRunner {\r\npublic static partial class Program {\r\n #### \r\n}\r\n}\r\n";
+        public const string default_functions = "namespace ScriptRunner {\r\npublic static partial class Program##id## {\r\n #### \r\n}\r\n}\r\n";
 
         public static CompilerParameters BuildCompileParameters(bool generateInMemory, bool generateExecutable, string outputAssembly)
         {
@@ -32,46 +32,63 @@ namespace CsSC
             return compilerParameters;
         }
 
-        public static CompilerResults Compile(string source, CompilerParameters compilerParameters)
+        public static CompilerResults Compile(string[] source, CompilerParameters compilerParameters)
         {
             CSharpCodeProvider CScodeProvider = new CSharpCodeProvider();
             ICodeCompiler icodeCompiler = CScodeProvider.CreateCompiler();
-            CompilerResults compilerResults = icodeCompiler.CompileAssemblyFromSource(compilerParameters, source);
+            CompilerResults compilerResults = icodeCompiler.CompileAssemblyFromSourceBatch(compilerParameters, source);
             return compilerResults;
         }
 
-        public static CompilerResults Compile(string filename, bool fullsource, bool showsource)
+        public static CompilerResults Compile(string filename, bool fullsource, bool showsource, out string fileid)
         {
             string source;
-            return Compile(filename, fullsource, out source);
+            return Compile(filename, null, fullsource, out source, out fileid);
 
             if (showsource) { Console.WriteLine(source); Environment.Exit(0); return null; }
         }
 
-        public static CompilerResults Compile(string filename, bool fullsource, out string source)
+        public static CompilerResults Compile(string filename, string fileid1, bool fullsource, out string source, out string fileid)
         {
             source = System.IO.File.ReadAllText(filename, EncodingType.GetType(filename));
             string using_text = "", functions = ""; string[] references = null;
 
-            string fileid = filename.Substring(filename.LastIndexOf(System.IO.Path.DirectorySeparatorChar) + 1);
-            fileid = "file" + fileid.Substring(0, fileid.IndexOf('.'));
-        
+            if (fileid1 != null)
+                fileid = fileid1;
+            else
+            {
+                fileid = filename.Substring(filename.LastIndexOf(System.IO.Path.DirectorySeparatorChar) + 1);
+                fileid = "file" + fileid.Substring(0, fileid.IndexOf('.'));
+            }
+
+            string[] sources;
+
             if (!fullsource && !source.StartsWith(CompileUnit.template))
             {
-                CompileUnit.ParseSource(ref source, out using_text, out references, out functions);
+                var incls = CompileUnit.ParseSource(ref source, fileid, out using_text, out references, out functions);
                 source = CompileUnit.default_using + using_text + Environment.NewLine + CompileUnit.default_main.Replace("##id##", fileid).Replace("####", source);
-                source += CompileUnit.default_functions.Replace("####", functions);
+                source += CompileUnit.default_functions.Replace("##id##", fileid).Replace("####", functions);
+                sources = new string[incls.Count + 1];
+                sources[0] = source;
+                int idx=0;
+                foreach (string v in incls.Values) sources[++idx] = v;
+            }
+            else
+            {
+                sources = new string[] { source };
             }
 
             CompilerParameters compilerParameters = CompileUnit.BuildCompileParameters(true, false, null);
             foreach (string refs in references)
                 compilerParameters.ReferencedAssemblies.Add(refs);
 
-            return CompileUnit.Compile(source, compilerParameters);
+            return CompileUnit.Compile(sources, compilerParameters);
         }
 
-        public static void ParseSource(ref string source, out string using_text, out string[] references, out string functions)
+        public static Dictionary<string, string> ParseSource(ref string source, string fileid, out string using_text, out string[] references, out string functions)
         {
+            Dictionary<string, string> incls = new Dictionary<string, string>();
+
             string new_source = "#line 1" + Environment.NewLine;
             List<string> references_list = new List<string>();
             using_text = ""; references = new string[0]; functions = "";
@@ -99,11 +116,9 @@ namespace CsSC
                         case "#include":
                             new_source += Environment.NewLine;
                             string include_filename = s.Substring("#include ".Length);
-                            string include_filecontent;
-                            Compile(include_filename, false, out include_filecontent);
-                            new_source += "#line 40000" + Environment.NewLine;
-                            new_source += include_filecontent + Environment.NewLine;
-                            new_source += "#line " + (i + 2) + Environment.NewLine;
+                            string include_filecontent, tf;
+                            Compile(include_filename, null, false, out include_filecontent, out tf);
+                            if (!incls.ContainsKey(fileid)) incls.Add(fileid, include_filecontent);
                             continue;
                         case "#function":
                             new_source += Environment.NewLine;
@@ -127,6 +142,8 @@ namespace CsSC
             references = references_list.ToArray();
             source = new_source + Environment.NewLine + "#line 10000";
             functions += Environment.NewLine + "#line 20000";
+
+            return incls;
         }
     }
 
