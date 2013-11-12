@@ -7,15 +7,65 @@ using System;
 
 namespace CsSC
 {
-   static class Program
+    public static class Program
     {
+
+        static object RunFile(string filename, string entry, object[] args, bool fullsource = false)
+        {
+
+            string fileid;
+            string[] filenames;
+            CompilerResults compilerResults = CompileUnit.Compile(filename, fullsource, false, out fileid, out filenames);
+
+            if (compilerResults.Errors.Count == 0)
+            {
+                ///如果错误数为0则进行调用
+                Assembly asm = compilerResults.CompiledAssembly;
+                Type type = asm.GetType("ScriptRunner.Program" + fileid);
+                MethodInfo methodInfo = type.GetMethod(entry);
+                //object obj = System.Activator.CreateInstance(type);
+                try
+                {
+                    object result = methodInfo.Invoke(null, args);
+                    //object result = type.InvokeMember("Main", BindingFlags.InvokeMethod | BindingFlags.Static | BindingFlags.Public, null, null, argv);
+                    //Console.WriteLine(result.ToString());
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.InnerException);
+                    return null;
+                }
+            }
+            else
+            {
+                //如果出错则返回错误文本
+                foreach (CompilerError compilerError in compilerResults.Errors)
+                {
+                    string idstr = compilerError.FileName.Substring(compilerError.FileName.IndexOf('.') + 1);
+                    if (idstr.Contains(".")) idstr = idstr.Substring(0, idstr.IndexOf('.'));
+                    int fileidx = string.IsNullOrEmpty(idstr) ? 0 : int.Parse(idstr);
+                    compilerError.FileName = filenames[fileidx];
+                    if (compilerError.Line > 10000)
+                    {
+                        Console.WriteLine("Main 函数区错误，可能是错误的 {} 匹配。");
+                    }
+                    else if (compilerError.Line > 20000)
+                    {
+                        Console.WriteLine("函数定义区错误，可能是错误的 {} 匹配。请检查 #function ... #endfunction 区间");
+                    }
+                    Console.WriteLine(compilerError);
+                }
+                return null;
+            }
+        }
        
         static void Main(string[] argv)
         {
 
             #region PARSE COMMAND LINE ARGS
             string filename = null;
-            bool create = false, fullsource = false, showsource = false, addpath = false;
+            bool create = false, fullsource = false, addpath = false;
 
             if (argv.Length < 1)
             {
@@ -38,10 +88,6 @@ namespace CsSC
                         case "-full":
                         case "-f":
                             fullsource = true;
-                            break;
-                        case "-source":
-                        case "-s":
-                            showsource = true;
                             break;
                         case "-addpath":
                         case "-a":
@@ -92,57 +138,12 @@ namespace CsSC
                 }
             }
 
-            string fileid;
-            string[] filenames;
-            CompilerResults compilerResults = CompileUnit.Compile(filename, fullsource, showsource, out fileid, out filenames);
-
             ++args_offset;
             string[] child_argv = new string[Math.Max(0, argv.Length - args_offset)];
             for (int i = args_offset; i < argv.Length; ++i)
                 child_argv[i - args_offset] = argv[i];
 
-            if (compilerResults.Errors.Count == 0)
-            {
-                ///如果错误数为0则进行调用
-                Assembly asm = compilerResults.CompiledAssembly;
-                Type type = asm.GetType("ScriptRunner.Program" + fileid);
-                MethodInfo methodInfo = type.GetMethod("Main");
-                //object obj = System.Activator.CreateInstance(type);
-                try
-                {
-                    object result = methodInfo.Invoke(null, new object[]{child_argv});
-                    //object result = type.InvokeMember("Main", BindingFlags.InvokeMethod | BindingFlags.Static | BindingFlags.Public, null, null, argv);
-                    //Console.WriteLine(result.ToString());
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.InnerException);
-                    return;
-                }
-            }
-            else
-            {
-                //如果出错则返回错误文本
-                foreach (CompilerError compilerError in compilerResults.Errors)
-                {
-                    string idstr = compilerError.FileName.Substring(compilerError.FileName.IndexOf('.') + 1);
-                    if (idstr.Contains(".")) idstr = idstr.Substring(0, idstr.IndexOf('.'));
-                    int fileidx = string.IsNullOrEmpty(idstr) ? 0 : int.Parse(idstr);
-                    compilerError.FileName = filenames[fileidx];
-                    if (compilerError.Line > 10000)
-                    {
-                        Console.WriteLine("Main 函数区错误，可能是错误的 {} 匹配。");
-                    }
-                    else if (compilerError.Line > 20000)
-                    {
-                        Console.WriteLine("函数定义区错误，可能是错误的 {} 匹配。请检查 #function ... #endfunction 区间");
-                    }
-                    Console.WriteLine(compilerError);
-                }    
-                return;
-            }
-
+            RunFile(filename, "Main", new object[] { child_argv }, fullsource);
 
         }
     }
