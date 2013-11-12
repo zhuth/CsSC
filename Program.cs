@@ -93,7 +93,8 @@ namespace CsSC
             }
 
             string fileid;
-            CompilerResults compilerResults = CompileUnit.Compile(filename, fullsource, showsource, out fileid);
+            string[] filenames;
+            CompilerResults compilerResults = CompileUnit.Compile(filename, fullsource, showsource, out fileid, out filenames);
 
             ++args_offset;
             string[] child_argv = new string[Math.Max(0, argv.Length - args_offset)];
@@ -125,7 +126,10 @@ namespace CsSC
                 //如果出错则返回错误文本
                 foreach (CompilerError compilerError in compilerResults.Errors)
                 {
-                    compilerError.FileName = filename;
+                    string idstr = compilerError.FileName.Substring(compilerError.FileName.IndexOf('.') + 1);
+                    if (idstr.Contains(".")) idstr = idstr.Substring(0, idstr.IndexOf('.'));
+                    int fileidx = string.IsNullOrEmpty(idstr) ? 0 : int.Parse(idstr);
+                    compilerError.FileName = filenames[fileidx];
                     if (compilerError.Line > 10000)
                     {
                         Console.WriteLine("Main 函数区错误，可能是错误的 {} 匹配。");

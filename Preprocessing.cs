@@ -40,15 +40,15 @@ namespace CsSC
             return compilerResults;
         }
 
-        public static CompilerResults Compile(string filename, bool fullsource, bool showsource, out string fileid)
+        public static CompilerResults Compile(string filename, bool fullsource, bool showsource, out string fileid, out string[] filenames)
         {
             string source;
-            return Compile(filename, null, fullsource, out source, out fileid);
+            return Compile(filename, null, fullsource, out source, out fileid, out filenames);
 
             if (showsource) { Console.WriteLine(source); Environment.Exit(0); return null; }
         }
 
-        public static CompilerResults Compile(string filename, string fileid1, bool fullsource, out string source, out string fileid)
+        public static CompilerResults Compile(string filename, string fileid1, bool fullsource, out string source, out string fileid, out string[] filenames)
         {
             source = System.IO.File.ReadAllText(filename, EncodingType.GetType(filename));
             string using_text = "", functions = ""; string[] references = null;
@@ -66,16 +66,21 @@ namespace CsSC
             if (!fullsource && !source.StartsWith(CompileUnit.template))
             {
                 var incls = CompileUnit.ParseSource(ref source, fileid, out using_text, out references, out functions);
-                source = CompileUnit.default_using + using_text + Environment.NewLine + CompileUnit.default_main.Replace("##id##", fileid).Replace("####", source);
+                string source0 = source;
+                source = CompileUnit.default_using + using_text + Environment.NewLine;
+                if (fileid1 == null) source += CompileUnit.default_main.Replace("##id##", fileid).Replace("####", source0);
                 source += CompileUnit.default_functions.Replace("##id##", fileid).Replace("####", functions);
                 sources = new string[incls.Count + 1];
+                filenames = new string[incls.Count + 1];
                 sources[0] = source;
-                int idx=0;
-                foreach (string v in incls.Values) sources[++idx] = v;
+                filenames[0] = filename;
+                int idx = 0;
+                foreach (var pair in incls) { sources[++idx] = pair.Value; filenames[idx] = pair.Key; }
             }
             else
             {
                 sources = new string[] { source };
+                filenames = new string[] { filename };
             }
 
             CompilerParameters compilerParameters = CompileUnit.BuildCompileParameters(true, false, null);
@@ -116,9 +121,9 @@ namespace CsSC
                         case "#include":
                             new_source += Environment.NewLine;
                             string include_filename = s.Substring("#include ".Length);
-                            string include_filecontent, tf;
-                            Compile(include_filename, null, false, out include_filecontent, out tf);
-                            if (!incls.ContainsKey(fileid)) incls.Add(fileid, include_filecontent);
+                            string include_filecontent, tf; string[] tfr;
+                            Compile(include_filename, fileid, false, out include_filecontent, out tf, out tfr);
+                            if (!incls.ContainsKey(include_filename)) incls.Add(include_filename, include_filecontent);
                             continue;
                         case "#function":
                             new_source += Environment.NewLine;
