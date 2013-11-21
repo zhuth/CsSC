@@ -65,7 +65,7 @@ namespace CsSC
 
             #region PARSE COMMAND LINE ARGS
             string filename = null;
-            bool create = false, fullsource = false, addpath = false;
+            bool fullsource = false;
 
             if (argv.Length < 1)
             {
@@ -83,7 +83,8 @@ namespace CsSC
                     {
                         case "-create":
                         case "-c":
-                            create = true;
+                            System.IO.File.WriteAllText(filename, CompileUnit.template);
+                            return;
                             break;
                         case "-full":
                         case "-f":
@@ -91,28 +92,17 @@ namespace CsSC
                             break;
                         case "-addpath":
                         case "-a":
-                            addpath = true;
+                            if (!filename.EndsWith(";")) filename += ";";
+                            Properties.Settings.Default.ScriptPaths += filename;
+                            Properties.Settings.Default.Save();
+                            return;
                             break;
                     }
                 else
                     if (filename == null) { filename = s; break; }
             }
             #endregion
-
-            if (create)
-            {
-                System.IO.File.WriteAllText(filename, CompileUnit.template);
-                return;
-            }
-
-            if (addpath)
-            {
-                if (!filename.EndsWith(";")) filename += ";";
-                Properties.Settings.Default.ScriptPaths += filename;
-                Properties.Settings.Default.Save();
-                return;
-            }
-
+            
             if (Host.GetFileExtension(filename) == "") filename += ".cssc";
 
             if (!Host.IsAbsolutePath(filename)) {
@@ -131,11 +121,8 @@ namespace CsSC
 
             if (!System.IO.File.Exists(filename))
             {
-                if (!System.IO.File.Exists(filename))
-                {
-                    Console.WriteLine("Error 2: File not found.");
-                    return;
-                }
+                Console.WriteLine("Error 2: File not found.");
+                return;
             }
 
             ++args_offset;
